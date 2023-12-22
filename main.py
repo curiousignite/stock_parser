@@ -34,27 +34,28 @@ def hm_parser(url, size=-1):
             + product_id
             + ".json"
         )
-    elif url[-5:] == ".json":
-        pass
     else:
-        print("H&M ERROR")
+        print("H&M BAD LINK")
         return 1
     agent = {"User-Agent": "Mozilla/5.0"}
     try:
         json_output = requests.get(url, headers=agent).json()["availability"]
-        for _ in json_output:
-            if _[-6:-3] != color_id:
-                json_output.remove(_)
+        for token in json_output:
+            if token[-6:-3] != color_id:
+                json_output.remove(token)
         if size >= 0:
-            for _ in json_output:
-                size_id = _[-3:]
+            for token in json_output:
+                size_id = token[-3:]
                 if int(size_id) == int(size):
                     print(size, " numaralı beden mevcut!", time.ctime())
                     alarm_sound.play()
         else:
-            print("Stoktaki bedenler: ", json_output, time.ctime())
-    except:
-        print("timeout", time.ctime())
+            if len(json_output):
+                print("Stoktaki bedenler: ", json_output, time.ctime())
+            else:
+                print("Stoklar boş", time.ctime())
+    except Exception as e:
+        print(e, time.ctime())
 
 
 def mango_parser(url, size=-1):
@@ -66,18 +67,18 @@ def mango_parser(url, size=-1):
         sizeAvailability = match[0][20:-1].split(",")
         if size >= 0:
             if sizeAvailability[size]:
-                print(sizeAvailability[size], "beden mevcut!", time.ctime())
+                print(sizeAvailability[size], "numaralı beden mevcut!", time.ctime())
                 alarm_sound.play()
             else:
                 print("Stok yok...", time.ctime())
         else:
-            print("Stoktaki bedenler:", sizeAvailability, time.ctime())
-        # if len(sizeAvailability):
-        #
-        # else:
-        #     print("Stoklar boş", time.ctime())
-    except:
-        print("timeout", time.ctime())
+            if len(sizeAvailability):
+                print("Stoktaki bedenler:", sizeAvailability, time.ctime())
+            else:
+                print("Stoklar boş", time.ctime())
+
+    except Exception as e:
+        print(e, time.ctime())
 
 
 def zara_parser(url, size=-1):
@@ -90,29 +91,39 @@ def zara_parser(url, size=-1):
             + id
             + "/availability"
         )
-    elif url[-12:] == "availability":
-        pass
     else:
-        print("ZARA ERROR")
+        print("ZARA BAD LINK")
         return 1
     agent = {"User-Agent": "Mozilla/5.0"}
     try:
         json_output = requests.get(url, headers=agent).json()["skusAvailability"]
-        print("Stoktaki bedenler: ", time.ctime())
         sorted_dict = {}
         for i in range(len(json_output)):
             sorted_dict[json_output[i]["sku"]] = json_output[i]["availability"]
         sorted_dict = dict(sorted(sorted_dict.items()))
-        print(sorted_dict)
-    except:
-        print("timeout", time.ctime())
+        if size >= 0:
+            if (list(sorted_dict.items())[size][1]) != "out_of_stock":
+                print(size, "numaralı beden mevcut!", time.ctime())
+                alarm_sound.play()
+            else:
+                print("Stok yok...")
+        else:
+            print("Stoktaki bedenler: ", sorted_dict, time.ctime())
+    except Exception as e:
+        print(e, time.ctime())
 
 
 def main():
     url = input("Mango, H&M veya ZARA ürün linki: ")
-    size = int(input("İstediğin beden numarası(En küçük beden 0 olacak şekilde)"))
-
     site = detect_site(url)
+    if site == "zara":
+        size = int(
+            input(
+                "İstediğin beden numarası(En küçük beden 0 olacak şekilde) İLKİNDEN FARKLI BİR RENK SEÇECEKSEN SAYMAYA İLK RENKTEN BAŞLA!:"
+            )
+        )
+    else:
+        size = int(input("İstediğin beden numarası(En küçük beden 0 olacak şekilde):"))
     while True:
         match site:
             case "hm":
@@ -121,7 +132,7 @@ def main():
                 mango_parser(url, size)
             case "zara":
                 zara_parser(url, size)
-        time.sleep(30)
+        time.sleep(10)
 
 
 if __name__ == "__main__":
